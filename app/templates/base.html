@@ -81,16 +81,16 @@
           {% if current_user.is_authenticated %} {% if current_user.is_admin %}
           <li>
             <a
-              href="{{ url_for('main_bp.admin') }}"
+              href="{{ url_for('main_bp.admin_products') }}"
               class="hover:text-yellow-400 transition"
-              >Admin Panel</a
+              >Products</a
             >
           </li>
           <li>
             <a
-              href="{{ url_for('main_bp.admin_feedback_cases') }}"
+              href="{{ url_for('main_bp.admin') }}"
               class="hover:text-yellow-400 transition"
-              >Review Feedback Cases</a
+              >Admin Panel</a
             >
           </li>
           <li>

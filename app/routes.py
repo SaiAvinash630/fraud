@@ -430,6 +430,7 @@ def remove_from_cart(item_id):
 # Checkout & Stripe Integration
 # -------------------------------
 
+
 def convert_numpy(obj):
     if isinstance(obj, (np.float32, np.float64)):
         return float(obj)
@@ -438,6 +439,7 @@ def convert_numpy(obj):
     if isinstance(obj, list):
         return [convert_numpy(i) for i in obj]
     return obj
+
 
 @main_bp.route("/checkout", methods=["POST"])
 @login_required
@@ -502,16 +504,44 @@ def checkout_success():
 # Order History
 # -------------------------------
 
+from sqlalchemy import or_, cast, String
+
 
 @main_bp.route("/orders")
 @login_required
 def orders():
-    user_orders = (
-        Order.query.filter_by(user_id=current_user.id)
-        .order_by(Order.timestamp.desc())
-        .all()
+    query = request.args.get("query", "").strip().lower()
+    status = request.args.get("status", "").strip()
+    page = request.args.get("page", 1, type=int)
+
+    # Start with base query for the current user
+    base_query = Order.query.filter_by(user_id=current_user.id)
+
+    # Apply search by order ID or timestamp
+    if query:
+        base_query = base_query.filter(
+            or_(
+                cast(Order.id, String).ilike(f"%{query}%"),
+                cast(Order.timestamp, String).ilike(f"%{query}%"),
+            )
+        )
+
+    # Apply filter by status
+    if status:
+        base_query = base_query.filter(Order.status == status)
+
+    # Pagination: 5 orders per page
+    pagination = base_query.order_by(Order.timestamp.desc()).paginate(
+        page=page, per_page=5, error_out=False
     )
-    return render_template("orders.html", orders=user_orders)
+    return_items = ReturnRequest.query.filter_by(user_id=current_user.id).all()
+    print(return_items)
+    return render_template(
+        "orders.html",
+        orders=pagination.items,
+        pagination=pagination,
+        return_items=return_items,
+    )
 
 
 # -------------------------------
@@ -650,14 +680,43 @@ def admin():
 
     products = Product.query.all()
     cases = FeedbackCase.query.order_by(FeedbackCase.timestamp.desc()).all()
-    return_requests = ReturnRequest.query.order_by(ReturnRequest.created_at.desc()).all()
+    return_requests = ReturnRequest.query.order_by(
+        ReturnRequest.created_at.desc()
+    ).all()
+    orders = Order.query.order_by(Order.timestamp.desc()).all()
     return render_template(
         "admin.html",
         products=products,
         form=form,
         cases=cases,
         return_requests=return_requests,
+        orders=orders,
     )
+
+
+@main_bp.route("/admin/products", methods=["GET", "POST"])
+@login_required
+def admin_products():
+    if not current_user.is_admin:
+        flash("Access denied.")
+        return redirect(url_for("main_bp.index"))
+    form = ProductForm()
+    if form.validate_on_submit():
+        new_product = Product(
+            name=form.name.data,
+            description=form.description.data,
+            price=form.price.data,
+            image_url=form.image_url.data,
+            category=form.category.data,
+            stock=form.stock.data,
+        )
+        db.session.add(new_product)
+        db.session.commit()
+        flash("Product added successfully!", "success")
+        return redirect(url_for("main_bp.admin"))
+
+    products = Product.query.all()
+    return render_template("admin_products.html", products=products, form=form)
 
 
 @main_bp.route("/admin/dashboard")
@@ -670,11 +729,12 @@ def admin_dashboard():
     return render_template("admin_dashboard.html", feedback_cases=feedback_cases)
 
 
-@main_bp.route('/admin/feedback_case/<int:case_id>', methods=['GET'])
+@main_bp.route("/admin/feedback_case/<int:case_id>", methods=["GET"])
 @login_required
 def view_case(case_id):
     case = FeedbackCase.query.get_or_404(case_id)
-    return render_template('view_case.html', case=case)
+    return render_template("view_case.html", case=case)
+
 
 @main_bp.route("/payment", methods=["GET", "POST"])
 @login_required
@@ -820,7 +880,8 @@ def payment():
                     product_id=item.product.id,
                     quantity=item.quantity,
                     category=item.product.category,  # Store category
-                    item_amount=item.product.price * item.quantity  # Store amount for this product
+                    item_amount=item.product.price
+                    * item.quantity,  # Store amount for this product
                 )
                 item.product.stock -= item.quantity
                 db.session.add(order_item)
@@ -845,7 +906,7 @@ def payment():
                         "product_id": item.product.id,
                         "category": item.product.category,
                         "amount": item.product.price * item.quantity,
-                        "quantity": item.quantity
+                        "quantity": item.quantity,
                     }
                     for item in cart_items
                 ],
@@ -923,7 +984,7 @@ def feedback_case_action(case_id, action):
                         product_id=item.product_id,
                         quantity=item.quantity,
                         category=item.product.category,
-                        item_amount=item.product.price * item.quantity
+                        item_amount=item.product.price * item.quantity,
                     )
                     db.session.add(order_item)
                     # Store in FeedbackCase (if you want to keep a record per product)
@@ -956,6 +1017,7 @@ model.load_model("models/structured_postpay_xgb_model.json")
 with open("models/label_encoders.pkl", "rb") as f:
     label_encoders = pickle.load(f)
 
+
 @main_bp.route("/order/<int:order_id>/return", methods=["GET", "POST"])
 @login_required
 def return_request(order_id):
@@ -980,8 +1042,10 @@ def return_request(order_id):
             "refund_amount": 0.0,
             "chargeback_requested": 0,
             "chargeback_reason": "None",
-            "account_age_days": (datetime.utcnow() - current_user.created_at).days,
-            "order_history_count": Order.query.filter_by(user_id=current_user.id).count(),
+            "account_age_days": (datetime.now() - current_user.created_at).days,
+            "order_history_count": Order.query.filter_by(
+                user_id=current_user.id
+            ).count(),
             "return_rate": 0.1,  # You can replace this with a real calculation
             "chargeback_rate": 0.0,
             "transaction_amount": float(order.total_amount or 0.0),
@@ -1005,15 +1069,19 @@ def return_request(order_id):
         pred_class = model.predict(df_input)[0]
 
         # Build product info for JSON field
-        product_list = [
-            {
-                "product_id": item.product.id,
-                "quantity": item.quantity,
-                "amount": item.product.price,
-                "category": item.product.category if item.product else "Unknown"
-            }
-            for item in order.items
-        ] if order.items else []
+        product_list = (
+            [
+                {
+                    "product_id": item.product.id,
+                    "quantity": item.quantity,
+                    "amount": item.product.price,
+                    "category": item.product.category if item.product else "Unknown",
+                }
+                for item in order.items
+            ]
+            if order.items
+            else []
+        )
 
         # Save return request
         return_req = ReturnRequest(
@@ -1036,6 +1104,7 @@ def return_request(order_id):
             chargeback_rate=input_data["chargeback_rate"],
             transaction_amount=input_data["transaction_amount"],
             products=product_list,
+            probability=round(pred_proba, 4),
         )
         db.session.add(return_req)
 
@@ -1059,12 +1128,17 @@ def return_request(order_id):
                 admin_status="Pending",
             )
             db.session.add(feedback)
-
+            flash(
+                f"⚠️ Return flagged for review. Fraud Probability: {pred_proba:.4f}",
+                "warning",
+            )
+        else:
+            flash(f"✅ Return approved. Fraud Probability: {pred_proba:.4f}", "success")
         db.session.commit()
-        flash(f"✅ Return request submitted. Fraud Probability: {pred_proba:.4f}", "success")
         return redirect(url_for("main_bp.orders"))
 
     return render_template("view_order.html", order=order)
+
 
 @main_bp.route("/order/<int:order_id>", methods=["GET", "POST"])
 @login_required
@@ -1073,42 +1147,45 @@ def order_detail(order_id):
     if order.user_id != current_user.id:
         flash("Unauthorized.")
         return redirect(url_for("main_bp.orders"))
+
     if request.method == "POST":
         request_type = request.form.get("request_type")
         status = "Pending"
         if request_type == "not_received":
             status = "Not Received"
 
-        if current_user.created_at:
-            account_age_days = (datetime.now() - current_user.created_at).days
-        else:
-            account_age_days = 0
-
+        account_age_days = (
+            (datetime.now() - current_user.created_at).days
+            if current_user.created_at
+            else 0
+        )
         order_history_count = Order.query.filter_by(user_id=current_user.id).count()
         return_rate = 0.0
         chargeback_rate = 0.0
-# In your order_detail or return request route:
         cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
+
+        # Build product info list
+        product_list = [
+            {
+                "product_id": item.product.id,
+                "category": item.product.category,
+                "amount": item.product.price * item.quantity,
+                "quantity": item.quantity,
+            }
+            for item in cart_items
+        ]
+
         return_req = ReturnRequest(
             order_id=order.id,
             user_id=current_user.id,
             payment_method=order.payment_method,
             device_type=getattr(order, "device", "Unknown"),
             delivery_status="Delivered",
-                products=[
-        {
-            "product_id": item.product.id,
-            "category": item.product.category,
-            "amount": item.product.price * item.quantity,
-            "quantity": item.quantity
-        }
-        for item in cart_items
-    ],
+            products=product_list,
             return_requested=1 if request_type == "return" else 0,
             return_reason=request_type if request_type == "return" else "None",
             item_returned=1 if request_type == "return" else 0,
             item_condition="N/A",
-
             refund_issued=0,
             refund_amount=0.0,
             chargeback_requested=0,
@@ -1122,6 +1199,101 @@ def order_detail(order_id):
         )
         db.session.add(return_req)
         db.session.commit()
-        flash("Your request has been submitted.")
+
+        # === FRAUD DETECTION LOGIC START ===
+        input_data = {
+            "payment_method": order.payment_method or "Credit Card",
+            "device_type": getattr(order, "device", "Mobile"),
+            "delivery_status": "Delivered",
+            "return_requested": 1,
+            "return_reason": request_type if request_type == "return" else "None",
+            "item_returned": 1 if request_type == "return" else 0,
+            "item_condition": "N/A",
+            "refund_issued": 0,
+            "refund_amount": 0.0,
+            "chargeback_requested": 0,
+            "chargeback_reason": "None",
+            "account_age_days": account_age_days,
+            "order_history_count": order_history_count,
+            "return_rate": return_rate,
+            "chargeback_rate": chargeback_rate,
+            "transaction_amount": float(order.total_amount or 0.0),
+        }
+
+        df_input = pd.DataFrame([input_data])
+        for col, le in label_encoders.items():
+            if col in df_input.columns:
+                df_input[col] = df_input[col].astype(str)
+                if df_input[col].iloc[0] not in le.classes_:
+                    le.classes_ = np.append(le.classes_, df_input[col].iloc[0])
+                df_input[col] = le.transform(df_input[col])
+
+        feature_order = model.get_booster().feature_names
+        for feat in feature_order:
+            if feat not in df_input.columns:
+                df_input[feat] = 0
+        df_input = df_input[feature_order]
+
+        pred_proba = model.predict_proba(df_input)[0][1]
+        pred_class = model.predict(df_input)[0]
+
+        # If flagged, save feedback case
+        if pred_class == 1 or pred_proba >= 0.6:
+            feedback = FeedbackCase(
+                order_id=order.id,
+                user_id=current_user.id,
+                payment_method=input_data["payment_method"],
+                device=input_data["device_type"],
+                products=product_list,
+                total_value=input_data["transaction_amount"],
+                num_trans_24h=0,
+                num_failed_24h=0,
+                no_of_cards_from_ip=0,
+                account_age_days=input_data["account_age_days"],
+                timestamp=datetime.now(),
+                prediction="Need Review",
+                probability=round(pred_proba, 4),
+                anomaly_score=-0.03,
+                admin_status="Pending",
+            )
+            db.session.add(feedback)
+            db.session.commit()
+            flash(
+                f"Your request has been submitted but flagged as low risk. Fraud Probability: {pred_proba:.4f}",
+                "info",
+            )
+
+        else:
+            flash(
+                f"Your request has been submitted. Fraud Probability: {pred_proba:.4f}",
+                "success",
+            )
+            return_req = ReturnRequest(
+                order_id=order.id,
+                user_id=current_user.id,
+                payment_method=order.payment_method,
+                device_type=getattr(order, "device", "Unknown"),
+                delivery_status="Delivered",
+                products=product_list,
+                return_requested=1 if request_type == "return" else 0,
+                return_reason=request_type if request_type == "return" else "None",
+                item_returned=1 if request_type == "return" else 0,
+                item_condition="N/A",
+                refund_issued=0,
+                refund_amount=0.0,
+                chargeback_requested=0,
+                chargeback_reason="None",
+                account_age_days=account_age_days,
+                order_history_count=order_history_count,
+                return_rate=return_rate,
+                chargeback_rate=chargeback_rate,
+                transaction_amount=order.total_amount,
+                status="Return Requested",
+            )
+        db.session.add(return_req)
+        db.session.commit()
+        # === FRAUD DETECTION LOGIC END ===
+
         return redirect(url_for("main_bp.orders"))
+
     return render_template("order_detail.html", order=order)

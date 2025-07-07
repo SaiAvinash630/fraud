@@ -99,12 +99,13 @@ class OrderItem(db.Model):
     """
     Represents a single product within an order.
     """
+
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey("order.id"))
     product_id = db.Column(db.Integer, db.ForeignKey("product.id"))
     quantity = db.Column(db.Integer)
-    category = db.Column(db.String(100))         # New: store product category at order time
-    item_amount = db.Column(db.Float)  
+    category = db.Column(db.String(100))  # New: store product category at order time
+    item_amount = db.Column(db.Float)
 
 
 class WishlistItem(db.Model):
@@ -167,6 +168,7 @@ class ReturnRequest(db.Model):
     payment_method = db.Column(db.String(64))
     device_type = db.Column(db.String(64))
     delivery_status = db.Column(db.String(64))
+    probability = db.Column(db.Float, default=0.25)
     return_requested = db.Column(db.Integer)
     return_reason = db.Column(db.String(255))
     item_returned = db.Column(db.Integer)
@@ -181,5 +183,5 @@ class ReturnRequest(db.Model):
     chargeback_rate = db.Column(db.Float)
     transaction_amount = db.Column(db.Float)
     status = db.Column(db.String(32), default="Pending")
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    products = db.Column(db.JSON) 
+    created_at = db.Column(db.DateTime, default=datetime.now())
+    products = db.Column(db.JSON)

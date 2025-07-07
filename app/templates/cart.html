@@ -3,103 +3,78 @@ block content %}
 <h2 class="text-3xl font-semibold mb-6">Your Shopping Cart</h2>
 
 {% if cart_items %}
-<div class="overflow-x-auto shadow-md rounded-lg bg-white">
-  <table class="min-w-full text-center divide-y divide-gray-200">
-    <thead class="bg-gray-50">
-      <tr>
-        <th
-          scope="col"
-          class="px-6 py-3 text-gray-700 font-medium uppercase tracking-wide"
-        >
-          Product
-        </th>
-        <th
-          scope="col"
-          class="px-6 py-3 text-gray-700 font-medium uppercase tracking-wide"
-        >
-          Quantity
-        </th>
-        <th
-          scope="col"
-          class="px-6 py-3 text-gray-700 font-medium uppercase tracking-wide"
-        >
-          Unit Price
-        </th>
-        <th
-          scope="col"
-          class="px-6 py-3 text-gray-700 font-medium uppercase tracking-wide"
-        >
-          Subtotal
-        </th>
-        <th
-          scope="col"
-          class="px-6 py-3 text-gray-700 font-medium uppercase tracking-wide"
-        >
-          Remove
-        </th>
-      </tr>
-    </thead>
-    <tbody class="divide-y divide-gray-100">
-      {% for item in cart_items %}
-      <tr>
-        <!-- Product Name -->
-        <td class="px-6 py-4 whitespace-nowrap font-semibold text-gray-800">
+<div class="space-y-6">
+  {% for item in cart_items %}
+  <div
+    class="bg-white rounded-2xl shadow-md p-6 flex flex-col md:flex-row items-start md:items-center justify-between border border-gray-200"
+  >
+    <!-- Product Info -->
+    <div class="flex items-start space-x-4 w-full md:w-1/2">
+      <img
+        src="{{ item.product.image_url or url_for('static', filename='default.jpg') }}"
+        alt="{{ item.product.name }}"
+        class="w-24 h-24 object-cover rounded-xl border border-gray-300 shadow-sm"
+      />
+      <div>
+        <h3 class="text-xl font-semibold text-gray-800">
           {{ item.product.name }}
-        </td>
+        </h3>
+        <p class="text-sm text-gray-500 mt-1">
+          Unit Price: ₹{{ "%.2f"|format(item.product.price) }}
+        </p>
+        <p class="text-sm text-gray-500">Stock: {{ item.product.stock }}</p>
+        {% if item.product.featured %}
+        <span
+          class="inline-block mt-2 text-xs px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full font-medium"
+          >🌟 Featured</span
+        >
+        {% endif %}
+      </div>
+    </div>
 
-        <!-- Quantity Form -->
-        <td class="px-6 py-4">
-          <form
-            action="{{ url_for('main_bp.update_cart', item_id=item.id) }}"
-            method="POST"
-            class="flex items-center justify-center space-x-2"
-            aria-label="Update quantity for {{ item.product.name }}"
-          >
-            {{ quantity_forms[item.id].hidden_tag() }} {{
-            quantity_forms[item.id].quantity(class="border border-gray-300
-            rounded w-20 text-center py-1 focus:ring-yellow-400
-            focus:outline-none", min=1, max=item.product.stock or 1) }} {{
-            quantity_forms[item.id].submit(class="bg-yellow-500
-            hover:bg-yellow-600 text-white px-3 py-1 rounded transition") }} {%
-            for error in quantity_forms[item.id].quantity.errors %}
-            <p class="text-xs text-red-600 mt-1">{{ error }}</p>
-            {% endfor %}
-          </form>
-        </td>
+    <!-- Quantity Update Form -->
+    <div class="mt-4 md:mt-0 flex items-center space-x-2 w-full md:w-1/4">
+      <form
+        action="{{ url_for('main_bp.update_cart', item_id=item.id) }}"
+        method="POST"
+        class="flex items-center space-x-2 w-full"
+      >
+        {{ quantity_forms[item.id].hidden_tag() }} {{
+        quantity_forms[item.id].quantity(class="w-20 border border-gray-300
+        rounded-lg py-1 px-2 text-center focus:outline-none focus:ring-2
+        focus:ring-yellow-400", min=1, max=item.product.stock or 1) }} {{
+        quantity_forms[item.id].submit(class="bg-yellow-500 hover:bg-yellow-600
+        text-white px-4 py-1 rounded-lg text-sm font-medium transition") }}
+      </form>
+    </div>
 
-        <!-- Unit Price -->
-        <td class="px-6 py-4 whitespace-nowrap text-gray-700">
-          ₹{{ "%.2f"|format(item.product.price) }}
-        </td>
+    <!-- Subtotal & Remove -->
+    <div class="mt-4 md:mt-0 flex flex-col items-end w-full md:w-1/4">
+      <p class="text-lg font-semibold text-green-600 mb-2">
+        ₹{{ "%.2f"|format(item.product.price * item.quantity) }}
+      </p>
+      <a
+        href="{{ url_for('main_bp.remove_from_cart', item_id=item.id) }}"
+        class="text-sm px-3 py-1 border border-red-600 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition"
+        onclick="return confirm('Remove this item from your cart?');"
+      >
+        Remove
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
 
-        <!-- Subtotal -->
-        <td class="px-6 py-4 whitespace-nowrap text-gray-900 font-semibold">
-          ₹{{ "%.2f"|format(item.product.price * item.quantity) }}
-        </td>
-
-        <!-- Remove Button -->
-        <td class="px-6 py-4">
-          <a
-            href="{{ url_for('main_bp.remove_from_cart', item_id=item.id) }}"
-            class="inline-block px-3 py-1 text-red-600 border border-red-600 rounded hover:bg-red-600 hover:text-white transition"
-            aria-label="Remove {{ item.product.name }} from cart"
-            onclick="return confirm('Remove this item from your cart?');"
-          >
-            Remove
-          </a>
-        </td>
-      </tr>
-      {% endfor %}
-
-      <!-- Total Row -->
-      <tr class="bg-gray-50 font-semibold text-gray-800">
-        <td colspan="3" class="text-right px-6 py-4">Total:</td>
-        <td colspan="2" class="px-6 py-4 text-green-600 text-lg">
-          ₹{{ "%.2f"|format(total) }}
-        </td>
-      </tr>
-    </tbody>
-  </table>
+<!-- Total Section -->
+<div
+  class="mt-10 flex flex-col sm:flex-row justify-between items-center bg-gray-100 rounded-2xl px-6 py-4 shadow-inner border border-gray-200"
+>
+  <div class="text-lg text-gray-700 font-semibold">
+    🧾 Total Payable Amount:
+  </div>
+  <div class="text-2xl font-bold text-green-700 mt-2 sm:mt-0">
+    ₹{{ "%.2f"|format(total) }}
+  </div>
 </div>
 
 <!-- Checkout Button -->
@@ -107,28 +82,27 @@ block content %}
   <form
     method="GET"
     action="{{ url_for('main_bp.payment') }}"
-    aria-label="Proceed to checkout"
     onsubmit="handleCheckoutSubmit(this);"
   >
     <button
       type="submit"
       id="checkout-btn"
-      class="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-md text-lg transition"
+      class="inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold px-6 py-3 rounded-xl text-lg shadow-md transition"
     >
-      <i class="bi bi-credit-card me-2"></i> Proceed to Checkout
+      <svg
+        class="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+      >
+        <path
+          d="M3 3h2l.4 2M7 13h14l-1.35 6.68a1 1 0 0 1-.98.82H6.33a1 1 0 0 1-.98-.8L4 5H2"
+        ></path>
+      </svg>
+      <span>Proceed to Checkout</span>
     </button>
   </form>
 </div>
 
-{% else %}
-<!-- Empty Cart State -->
-<div class="text-center py-20 text-gray-500">
-  <p class="text-xl mb-6">Your cart is empty.</p>
-  <a
-    href="{{ url_for('main_bp.index') }}"
-    class="inline-flex items-center border border-blue-600 text-blue-600 px-6 py-3 rounded hover:bg-blue-600 hover:text-white transition"
-  >
-    <i class="bi bi-arrow-left me-2"></i> Browse Products
-  </a>
-</div>
 {% endif %} {% endblock %}
