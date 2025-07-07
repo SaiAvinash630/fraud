@@ -118,7 +118,7 @@ class FraudPredictor:
         }
 
 
-fraud_predictor = FraudPredictor("models/hybrid_new.pkl")
+fraud_predictor = FraudPredictor("models/fraud_detection_model.pkl")
 
 main_bp = Blueprint("main_bp", __name__)
 
@@ -1011,6 +1011,22 @@ def feedback_case_action(case_id, action):
     return redirect(url_for("main_bp.admin_feedback_cases"))
 
 
+@main_bp.route("/admin/return_request/<int:req_id>/<action>")
+@login_required
+def admin_return_request_action(req_id, action):
+    if not current_user.is_admin:
+        flash("Access denied.")
+        return redirect(url_for("main_bp.index"))
+    req = ReturnRequest.query.get_or_404(req_id)
+    if action == "approve":
+        req.status = "Approved"
+    elif action == "reject":
+        req.status = "Rejected"
+    db.session.commit()
+    flash(f"Return request {action}d.", "success")
+    return redirect(url_for("main_bp.admin"))
+
+
 # Load model and encoders once at startup
 model = xgb.XGBClassifier()
 model.load_model("models/structured_postpay_xgb_model.json")
@@ -1023,121 +1039,66 @@ with open("models/label_encoders.pkl", "rb") as f:
 def return_request(order_id):
     order = Order.query.get_or_404(order_id)
     if order.user_id != current_user.id:
-        flash("Unauthorized access.", "danger")
+        flash("Unauthorized.", "danger")
         return redirect(url_for("main_bp.orders"))
 
     if request.method == "POST":
-        reason = request.form.get("reason", "Other")
+        # Gather features for the model
+        product_id = request.form.get("product_id")
+        quantity = request.form.get("quantity")
+        request_type = request.form.get("request_type")
+        # ...gather other features as needed...
 
-        # Prepare input for model
-        input_data = {
-            "payment_method": order.payment_method or "Credit Card",
-            "device_type": getattr(order, "device", "Mobile"),
-            "delivery_status": "Delivered",
-            "return_requested": 1,
-            "return_reason": reason,
-            "item_returned": 1,
-            "item_condition": "N/A",
-            "refund_issued": 0,
-            "refund_amount": 0.0,
-            "chargeback_requested": 0,
-            "chargeback_reason": "None",
-            "account_age_days": (datetime.now() - current_user.created_at).days,
-            "order_history_count": Order.query.filter_by(
-                user_id=current_user.id
-            ).count(),
-            "return_rate": 0.1,  # You can replace this with a real calculation
-            "chargeback_rate": 0.0,
-            "transaction_amount": float(order.total_amount or 0.0),
-        }
+        # Example: Prepare your feature vector (replace with your actual features)
+        features = [
+            # e.g. order.total_amount, int(quantity), etc.
+        ]
+        # If you need to encode categorical features, use label_encoders here
 
-        df_input = pd.DataFrame([input_data])
-        for col, le in label_encoders.items():
-            if col in df_input.columns:
-                df_input[col] = df_input[col].astype(str)
-                if df_input[col].iloc[0] not in le.classes_:
-                    le.classes_ = np.append(le.classes_, df_input[col].iloc[0])
-                df_input[col] = le.transform(df_input[col])
+        # Predict probability
+        prob = float(model.predict_proba([features])[0][1])  # [0][1] for positive class
 
-        feature_order = model.get_booster().feature_names
-        for feat in feature_order:
-            if feat not in df_input.columns:
-                df_input[feat] = 0
-        df_input = df_input[feature_order]
+        prob = float(prob)
+        if prob > 1:  # If it's a percent, convert to decimal
+            prob = prob / 100
+        if prob < 0.5:
+            status = "Approved"
+        else:
+            status = "Pending"
 
-        pred_proba = model.predict_proba(df_input)[0][1]
-        pred_class = model.predict(df_input)[0]
+        # Gather product info for this order
+        order_items = OrderItem.query.filter_by(order_id=order.id).all()
+        product_list = [
+            {
+                "product_id": item.product_id,
+                "category": getattr(item, "category", None),
+                "amount": getattr(item, "item_amount", None),
+                "quantity": item.quantity,
+            }
+            for item in order_items
+        ]
 
-        # Build product info for JSON field
-        product_list = (
-            [
-                {
-                    "product_id": item.product.id,
-                    "quantity": item.quantity,
-                    "amount": item.product.price,
-                    "category": item.product.category if item.product else "Unknown",
-                }
-                for item in order.items
-            ]
-            if order.items
-            else []
-        )
-
-        # Save return request
-        return_req = ReturnRequest(
+        # Save the return request
+        new_request = ReturnRequest(
             order_id=order.id,
             user_id=current_user.id,
-            payment_method=input_data["payment_method"],
-            device_type=input_data["device_type"],
-            delivery_status=input_data["delivery_status"],
-            return_requested=input_data["return_requested"],
-            return_reason=reason,
-            item_returned=input_data["item_returned"],
-            item_condition=input_data["item_condition"],
-            refund_issued=input_data["refund_issued"],
-            refund_amount=input_data["refund_amount"],
-            chargeback_requested=input_data["chargeback_requested"],
-            chargeback_reason=input_data["chargeback_reason"],
-            account_age_days=input_data["account_age_days"],
-            order_history_count=input_data["order_history_count"],
-            return_rate=input_data["return_rate"],
-            chargeback_rate=input_data["chargeback_rate"],
-            transaction_amount=input_data["transaction_amount"],
-            products=product_list,
-            probability=round(pred_proba, 4),
+            product_id=product_id,
+            quantity=quantity,
+            request_type=request_type,
+            status=status,
+            probability=prob,
+            products=product_list
         )
-        db.session.add(return_req)
-
-        # Create feedback case if flagged
-        if pred_class == 1 or pred_proba >= 0.6:
-            feedback = FeedbackCase(
-                order_id=order.id,
-                user_id=current_user.id,
-                payment_method=input_data["payment_method"],
-                device=input_data["device_type"],
-                products=product_list,
-                total_value=input_data["transaction_amount"],
-                num_trans_24h=0,
-                num_failed_24h=0,
-                no_of_cards_from_ip=0,
-                account_age_days=input_data["account_age_days"],
-                timestamp=datetime.utcnow(),
-                prediction="Need Review",
-                probability=round(pred_proba, 4),
-                anomaly_score=-0.03,
-                admin_status="Pending",
-            )
-            db.session.add(feedback)
-            flash(
-                f"⚠️ Return flagged for review. Fraud Probability: {pred_proba:.4f}",
-                "warning",
-            )
-        else:
-            flash(f"✅ Return approved. Fraud Probability: {pred_proba:.4f}", "success")
+        db.session.add(new_request)
         db.session.commit()
+
+        if status == "Approved":
+            flash("Your request was automatically approved.", "success")
+        else:
+            flash("Your request is pending admin review.", "info")
         return redirect(url_for("main_bp.orders"))
 
-    return render_template("view_order.html", order=order)
+    return render_template("order_detail.html", order=order)
 
 
 @main_bp.route("/order/<int:order_id>", methods=["GET", "POST"])
@@ -1164,15 +1125,16 @@ def order_detail(order_id):
         chargeback_rate = 0.0
         cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
 
-        # Build product info list
+        # Gather product info for this order
+        order_items = OrderItem.query.filter_by(order_id=order.id).all()
         product_list = [
             {
-                "product_id": item.product.id,
-                "category": item.product.category,
-                "amount": item.product.price * item.quantity,
+                "product_id": item.product_id,
+                "category": item.category,
+                "amount": item.item_amount,
                 "quantity": item.quantity,
             }
-            for item in cart_items
+            for item in order_items
         ]
 
         return_req = ReturnRequest(

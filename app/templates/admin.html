@@ -39,16 +39,14 @@
 
       {% set completed_orders = orders | selectattr('status', 'equalto',
       'Completed') | list %} {% set cancelled_orders = orders |
-      selectattr('status', 'equalto', 'Cancelled') | list %} {% set
-      feedback_orders = orders | selectattr('status', 'equalto', 'Feedback
-      Needed') | list %} {% set all_orders = orders %}
+      selectattr('status', 'equalto', 'Cancelled') | list %} {% set all_orders =
+      orders %}
 
       <!-- Summary Cards -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-        {% set summary = [('all', all_orders, 'indigo', 'All'), ('completed',
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
+        {% set summary = [ ('all', all_orders, 'indigo', 'All'), ('completed',
         completed_orders, 'green', 'Completed'), ('cancelled', cancelled_orders,
-        'red', 'Cancelled'), ('feedback', feedback_orders, 'yellow', 'Feedback
-        Needed')] %} {% for key, group, color, label in summary %}
+        'red', 'Cancelled') ] %} {% for key, group, color, label in summary %}
         <div
           :class="tab === '{{ key }}' ? 'bg-gradient-to-r from-{{ color }}-500 to-{{ color }}-600 text-white' : 'bg-{{ color }}-100 text-{{ color }}-800'"
           class="rounded-xl shadow p-4 cursor-pointer transition"
@@ -60,9 +58,8 @@
         {% endfor %}
       </div>
 
-      {% for tab_name, order_list in [('all', all_orders), ('completed',
-      completed_orders), ('cancelled', cancelled_orders), ('feedback',
-      feedback_orders)] %}
+      {% for tab_name, order_list in [ ('all', all_orders), ('completed',
+      completed_orders), ('cancelled', cancelled_orders) ] %}
       <div
         x-show="tab === '{{ tab_name }}'"
         x-cloak
@@ -104,7 +101,7 @@
               <td class="px-6 py-4">{{ order.payment_method }}</td>
               <td class="px-6 py-4">
                 <span
-                  class="text-xs font-semibold px-2 py-1 rounded {% if order.status == 'Completed' %}bg-green-200 text-green-900 {% elif order.status == 'Cancelled' %}bg-red-200 text-red-900 {% elif order.status == 'Feedback Needed' %}bg-yellow-200 text-yellow-900 {% else %}bg-gray-200 text-gray-800{% endif %}"
+                  class="text-xs font-semibold px-2 py-1 rounded {% if order.status == 'Completed' %}bg-green-200 text-green-900 {% elif order.status == 'Cancelled' %}bg-red-200 text-red-900 {% else %}bg-gray-200 text-gray-800{% endif %}"
                 >
                   {{ order.status }}
                 </span>
