@@ -1,0 +1,76 @@
+{% extends "base.html" %} {% block title %}Order #{{ order.id }} Details{%
+endblock %} {% block content %}
+<div class="max-w-2xl mx-auto bg-white rounded-lg shadow p-6 mt-8">
+  <h2 class="text-2xl font-bold mb-4">Order #{{ order.id }}</h2>
+  <p class="mb-2 text-gray-600">
+    Status: <span class="font-semibold">{{ order.status }}</span>
+  </p>
+  <div class="mb-4">
+    <h3 class="font-semibold mb-2">Items:</h3>
+    <ul>
+      {% for item in order.items %}
+      <li class="mb-1">
+        {{ item.product.name if item.product else 'Product Deleted' }} &times;
+        {{ item.quantity }}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="mb-4">
+    <span class="font-semibold">Total:</span> ₹{{
+    "%.2f"|format(order.total_amount) }}
+  </div>
+
+  {% if order.status == "Completed" %}
+  <div class="mt-8">
+    <h3 class="text-lg font-semibold mb-2">
+      Return or Report Issue for Individual Items
+    </h3>
+    <ul>
+      {% for item in order.items %}
+      <li class="mb-4 border-b pb-2">
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="font-semibold"
+              >{{ item.product.name if item.product else 'Product Deleted'
+              }}</span
+            >
+            <span class="ml-2 text-gray-500">Qty: {{ item.quantity }}</span>
+          </div>
+          <form method="post" style="display: inline">
+            <input
+              type="hidden"
+              name="product_id"
+              value="{{ item.product_id }}"
+            />
+            <input type="hidden" name="quantity" value="{{ item.quantity }}" />
+            <select
+              name="request_type"
+              required
+              class="border rounded p-1 text-sm"
+            >
+              <option value="" disabled selected>Choose</option>
+              <option value="return">Return</option>
+              <option value="not_received">Didn't Receive / Refund</option>
+            </select>
+            <button
+              type="submit"
+              class="ml-2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-2 rounded text-xs"
+            >
+              Submit
+            </button>
+          </form>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <a
+    href="{{ url_for('main_bp.orders') }}"
+    class="inline-block mt-6 text-blue-600 hover:underline"
+    >Back to Orders</a
+  >
+</div>
+{% endblock %}

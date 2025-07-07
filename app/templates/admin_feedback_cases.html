@@ -1,0 +1,375 @@
+{% extends "base.html" %} {% block content %}
+<div class="px-4 py-6" x-data="{ tab: 'all', open: null }">
+  <h2 class="text-2xl font-semibold mb-6">Feedback Cases Review</h2>
+
+  {% set pending_cases = cases|selectattr('admin_status', 'equalto',
+  'Pending')|list %} {% set approved_cases = cases|selectattr('admin_status',
+  'equalto', 'Approved')|list %} {% set rejected_cases =
+  cases|selectattr('admin_status', 'equalto', 'Rejected')|list %} {% set
+  all_cases = cases %}
+
+  <div class="mb-8 flex gap-4">
+    <button
+      class="px-4 py-2 rounded shadow font-semibold transition focus:outline-none"
+      :class="tab === 'all' ? 'bg-gray-400 text-gray-900' : 'bg-gray-100 text-gray-800'"
+      @click="tab = 'all'"
+    >
+      All: {{ all_cases|length }}
+    </button>
+    <button
+      class="px-4 py-2 rounded shadow font-semibold transition focus:outline-none"
+      :class="tab === 'pending' ? 'bg-yellow-400 text-yellow-900' : 'bg-yellow-100 text-yellow-800'"
+      @click="tab = 'pending'"
+    >
+      Pending: {{ pending_cases|length }}
+    </button>
+    <button
+      class="px-4 py-2 rounded shadow font-semibold transition focus:outline-none"
+      :class="tab === 'approved' ? 'bg-green-400 text-green-900' : 'bg-green-100 text-green-800'"
+      @click="tab = 'approved'"
+    >
+      Approved: {{ approved_cases|length }}
+    </button>
+    <button
+      class="px-4 py-2 rounded shadow font-semibold transition focus:outline-none"
+      :class="tab === 'rejected' ? 'bg-red-400 text-red-900' : 'bg-red-100 text-red-800'"
+      @click="tab = 'rejected'"
+    >
+      Rejected: {{ rejected_cases|length }}
+    </button>
+  </div>
+
+  <!-- All Cases Table -->
+  <div
+    x-show="tab === 'all'"
+    class="mb-10 overflow-x-auto bg-white shadow-md rounded-md"
+  >
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-100 text-gray-700 font-semibold">
+        <tr>
+          <th class="px-4 py-3 text-left">User ID</th>
+          <th class="px-4 py-3 text-left">Products</th>
+          <th class="px-4 py-3 text-left">Time</th>
+          <th class="px-4 py-3 text-left">Status</th>
+          <th class="px-4 py-3 text-left">View</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for case in all_cases %}
+        <tr>
+          <td class="px-4 py-3">{{ case.user_id }}</td>
+          <td class="px-4 py-3">
+            {% if case.products %}
+            <ul>
+              {% for prod in case.products %}
+              <li>
+                ID: {{ prod.product_id }}, Category: {{ prod.category }}, Qty:
+                {{ prod.quantity }}
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %} N/A {% endif %}
+          </td>
+          <td class="px-4 py-3">
+            {{ case.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+          </td>
+          <td class="px-4 py-3">
+            <span
+              class="text-xs font-semibold px-2 py-1 rounded {% if case.admin_status == 'Pending' %} bg-yellow-200 text-yellow-800 {% elif case.admin_status == 'Approved' %} bg-green-200 text-green-800 {% elif case.admin_status == 'Rejected' %} bg-red-200 text-red-800 {% endif %}"
+            >
+              {{ case.admin_status }}
+            </span>
+          </td>
+          <td class="px-4 py-3">
+            <button
+              class="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600 transition"
+              @click="open = (open === {{ case.id }}) ? null : {{ case.id }}"
+            >
+              View
+            </button>
+          </td>
+        </tr>
+        <tr x-show="open === {{ case.id }}" style="display: none">
+          <td colspan="5" class="bg-blue-50 px-4 py-3">
+            <div>
+              <h4 class="font-semibold mb-2">Detailed Analysis</h4>
+              <ul class="text-sm text-gray-700">
+                <li><b>Payment Method:</b> {{ case.payment_method }}</li>
+                <li><b>Device:</b> {{ case.device }}</li>
+                <li><b>Num Trans (24h):</b> {{ case.num_trans_24h }}</li>
+                <li><b>Num Failed (24h):</b> {{ case.num_failed_24h }}</li>
+                <li><b>Cards from IP:</b> {{ case.no_of_cards_from_ip }}</li>
+                <li><b>Account Age (days):</b> {{ case.account_age_days }}</li>
+                <li><b>Prediction:</b> {{ case.prediction }}</li>
+                <li><b>Probability:</b> {{ case.probability }}</li>
+                <li><b>Anomaly Score:</b> {{ case.anomaly_score }}</li>
+                <li><b>Status:</b> {{ case.admin_status }}</li>
+                <li>
+                  <b>Timestamp:</b> {{ case.timestamp.strftime('%Y-%m-%d
+                  %H:%M:%S') }}
+                </li>
+              </ul>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pending Cases Table -->
+  <div
+    x-show="tab === 'pending'"
+    class="mb-10 overflow-x-auto bg-white shadow-md rounded-md"
+  >
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-100 text-gray-700 font-semibold">
+        <tr>
+          <th class="px-4 py-3 text-left">User ID</th>
+          <th class="px-4 py-3 text-left">Products</th>
+          <th class="px-4 py-3 text-left">Time</th>
+          <th class="px-4 py-3 text-left">Status</th>
+          <th class="px-4 py-3 text-left">View</th>
+          <th class="px-4 py-3 text-left">Action</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for case in pending_cases %}
+        <tr>
+          <td class="px-4 py-3">{{ case.user_id }}</td>
+          <td class="px-4 py-3">
+            {% if case.products %}
+            <ul>
+              {% for prod in case.products %}
+              <li>
+                ID: {{ prod.product_id }}, Category: {{ prod.category }}, Qty:
+                {{ prod.quantity }}
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %} N/A {% endif %}
+          </td>
+          <td class="px-4 py-3">
+            {{ case.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+          </td>
+          <td class="px-4 py-3">
+            <span
+              class="text-xs font-semibold px-2 py-1 rounded bg-yellow-200 text-yellow-800"
+            >
+              {{ case.admin_status }}
+            </span>
+          </td>
+          <td class="px-4 py-3">
+            <button
+              class="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600 transition"
+              @click="open = (open === {{ case.id }}) ? null : {{ case.id }}"
+            >
+              View
+            </button>
+          </td>
+          <td class="px-4 py-3">
+            <div class="flex flex-col space-y-1">
+              <a
+                href="{{ url_for('main_bp.feedback_case_action', case_id=case.id, action='approve') }}"
+                class="bg-green-500 text-white px-3 py-1 rounded text-xs hover:bg-green-600 transition"
+              >
+                Approve
+              </a>
+              <a
+                href="{{ url_for('main_bp.feedback_case_action', case_id=case.id, action='reject') }}"
+                class="bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600 transition"
+              >
+                Reject
+              </a>
+            </div>
+          </td>
+        </tr>
+        <tr x-show="open === {{ case.id }}" style="display: none">
+          <td colspan="6" class="bg-blue-50 px-4 py-3">
+            <div>
+              <h4 class="font-semibold mb-2">Detailed Analysis</h4>
+              <ul class="text-sm text-gray-700">
+                <li><b>Payment Method:</b> {{ case.payment_method }}</li>
+                <li><b>Device:</b> {{ case.device }}</li>
+                <li><b>Num Trans (24h):</b> {{ case.num_trans_24h }}</li>
+                <li><b>Num Failed (24h):</b> {{ case.num_failed_24h }}</li>
+                <li><b>Cards from IP:</b> {{ case.no_of_cards_from_ip }}</li>
+                <li><b>Account Age (days):</b> {{ case.account_age_days }}</li>
+                <li><b>Prediction:</b> {{ case.prediction }}</li>
+                <li><b>Probability:</b> {{ case.probability }}</li>
+                <li><b>Anomaly Score:</b> {{ case.anomaly_score }}</li>
+                <li><b>Status:</b> {{ case.admin_status }}</li>
+                <li>
+                  <b>Timestamp:</b> {{ case.timestamp.strftime('%Y-%m-%d
+                  %H:%M:%S') }}
+                </li>
+              </ul>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Approved Cases Table -->
+  <div
+    x-show="tab === 'approved'"
+    class="mb-10 overflow-x-auto bg-white shadow-md rounded-md"
+  >
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-100 text-gray-700 font-semibold">
+        <tr>
+          <th class="px-4 py-3 text-left">User ID</th>
+          <th class="px-4 py-3 text-left">Products</th>
+          <th class="px-4 py-3 text-left">Time</th>
+          <th class="px-4 py-3 text-left">Status</th>
+          <th class="px-4 py-3 text-left">View</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for case in approved_cases %}
+        <tr>
+          <td class="px-4 py-3">{{ case.user_id }}</td>
+          <td class="px-4 py-3">
+            {% if case.products %}
+            <ul>
+              {% for prod in case.products %}
+              <li>
+                ID: {{ prod.product_id }}, Category: {{ prod.category }}, Qty:
+                {{ prod.quantity }}
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %} N/A {% endif %}
+          </td>
+          <td class="px-4 py-3">
+            {{ case.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+          </td>
+          <td class="px-4 py-3">
+            <span
+              class="text-xs font-semibold px-2 py-1 rounded bg-green-200 text-green-800"
+            >
+              {{ case.admin_status }}
+            </span>
+          </td>
+          <td class="px-4 py-3">
+            <button
+              class="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600 transition"
+              @click="open = (open === {{ case.id }}) ? null : {{ case.id }}"
+            >
+              View
+            </button>
+          </td>
+        </tr>
+        <tr x-show="open === {{ case.id }}" style="display: none">
+          <td colspan="5" class="bg-blue-50 px-4 py-3">
+            <div>
+              <h4 class="font-semibold mb-2">Detailed Analysis</h4>
+              <ul class="text-sm text-gray-700">
+                <li><b>Payment Method:</b> {{ case.payment_method }}</li>
+                <li><b>Device:</b> {{ case.device }}</li>
+                <li><b>Num Trans (24h):</b> {{ case.num_trans_24h }}</li>
+                <li><b>Num Failed (24h):</b> {{ case.num_failed_24h }}</li>
+                <li><b>Cards from IP:</b> {{ case.no_of_cards_from_ip }}</li>
+                <li><b>Account Age (days):</b> {{ case.account_age_days }}</li>
+                <li><b>Prediction:</b> {{ case.prediction }}</li>
+                <li><b>Probability:</b> {{ case.probability }}</li>
+                <li><b>Anomaly Score:</b> {{ case.anomaly_score }}</li>
+                <li><b>Status:</b> {{ case.admin_status }}</li>
+                <li>
+                  <b>Timestamp:</b> {{ case.timestamp.strftime('%Y-%m-%d
+                  %H:%M:%S') }}
+                </li>
+              </ul>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Rejected Cases Table -->
+  <div
+    x-show="tab === 'rejected'"
+    class="mb-10 overflow-x-auto bg-white shadow-md rounded-md"
+  >
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-100 text-gray-700 font-semibold">
+        <tr>
+          <th class="px-4 py-3 text-left">User ID</th>
+          <th class="px-4 py-3 text-left">Products</th>
+          <th class="px-4 py-3 text-left">Time</th>
+          <th class="px-4 py-3 text-left">Status</th>
+          <th class="px-4 py-3 text-left">View</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for case in rejected_cases %}
+        <tr>
+          <td class="px-4 py-3">{{ case.user_id }}</td>
+          <td class="px-4 py-3">
+            {% if case.products %}
+            <ul>
+              {% for prod in case.products %}
+              <li>
+                ID: {{ prod.product_id }}, Category: {{ prod.category }}, Qty:
+                {{ prod.quantity }}
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %} N/A {% endif %}
+          </td>
+          <td class="px-4 py-3">
+            {{ case.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+          </td>
+          <td class="px-4 py-3">
+            <span
+              class="text-xs font-semibold px-2 py-1 rounded bg-red-200 text-red-800"
+            >
+              {{ case.admin_status }}
+            </span>
+          </td>
+          <td class="px-4 py-3">
+            <button
+              class="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600 transition"
+              @click="open = (open === {{ case.id }}) ? null : {{ case.id }}"
+            >
+              View
+            </button>
+          </td>
+        </tr>
+        <tr x-show="open === {{ case.id }}" style="display: none">
+          <td colspan="5" class="bg-blue-50 px-4 py-3">
+            <div>
+              <h4 class="font-semibold mb-2">Detailed Analysis</h4>
+              <ul class="text-sm text-gray-700">
+                <li><b>Payment Method:</b> {{ case.payment_method }}</li>
+                <li><b>Device:</b> {{ case.device }}</li>
+                <li><b>Num Trans (24h):</b> {{ case.num_trans_24h }}</li>
+                <li><b>Num Failed (24h):</b> {{ case.num_failed_24h }}</li>
+                <li><b>Cards from IP:</b> {{ case.no_of_cards_from_ip }}</li>
+                <li><b>Account Age (days):</b> {{ case.account_age_days }}</li>
+                <li><b>Prediction:</b> {{ case.prediction }}</li>
+                <li><b>Probability:</b> {{ case.probability }}</li>
+                <li><b>Anomaly Score:</b> {{ case.anomaly_score }}</li>
+                <li><b>Status:</b> {{ case.admin_status }}</li>
+                <li>
+                  <b>Timestamp:</b> {{ case.timestamp.strftime('%Y-%m-%d
+                  %H:%M:%S') }}
+                </li>
+              </ul>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<script
+  src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+  defer
+></script>
+{% endblock %}

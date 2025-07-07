@@ -1,0 +1,52 @@
+{% extends "base.html" %} {% block title %}Admin Dashboard{% endblock %} {%
+block content %}
+<div class="max-w-3xl mx-auto mt-10">
+  <h2 class="text-2xl font-bold mb-6">Admin Dashboard</h2>
+
+  <!-- Display the logged-in user's name -->
+  <p class="text-lg mb-4">Welcome, {{ current_user.username }}!</p>
+
+  <!-- Logout link -->
+  <a
+    href="{{ url_for('main_bp.logout') }}"
+    class="text-red-600 font-semibold float-right mb-4"
+  >
+    Logout
+  </a>
+
+  <!-- Check if the user has admin access -->
+  {% if current_user.role == 'admin' %}
+  <h3 class="text-xl font-semibold mb-4">Feedback Cases</h3>
+  <table class="w-full border">
+    <thead>
+      <tr>
+        <th class="border px-2 py-1">ID</th>
+        <th class="border px-2 py-1">Order</th>
+        <th class="border px-2 py-1">User</th>
+        <th class="border px-2 py-1">Status</th>
+        <th class="border px-2 py-1">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for case in feedback_cases %}
+      <tr>
+        <td class="border px-2 py-1">{{ case.id }}</td>
+        <td class="border px-2 py-1">{{ case.order_id }}</td>
+        <td class="border px-2 py-1">{{ case.user_id }}</td>
+        <td class="border px-2 py-1">{{ case.admin_status }}</td>
+        <td class="border px-2 py-1">
+          <a
+            href="{{ url_for('main_bp.view_case', case_id=case.id) }}"
+            class="text-blue-600 underline"
+            >Review</a
+          >
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>You do not have permission to view this page.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %} {% block title %}Review Feedback Case{% endblock %} {%
+block content %}
+<div class="max-w-3xl mx-auto mt-10">
+  <h2 class="text-2xl font-bold mb-6">Review Feedback Case</h2>
+
+  <div class="mb-4">
+    <h3 class="font-semibold mb-2">Feedback Case ID: {{ case.id }}</h3>
+    <p><strong>Status:</strong> {{ case.admin_status }}</p>
+    <p><strong>Order ID:</strong> {{ case.order_id }}</p>
+    <p><strong>User ID:</strong> {{ case.user_id }}</p>
+    <p><strong>Payment Method:</strong> {{ case.payment_method }}</p>
+    <p><strong>Device:</strong> {{ case.device }}</p>
+    <p><strong>Total Value:</strong> ₹{{ "%.2f"|format(case.total_value) }}</p>
+    <p><strong>Prediction:</strong> {{ case.prediction }}</p>
+    <p><strong>Probability:</strong> {{ case.probability }}</p>
+    <p><strong>Anomaly Score:</strong> {{ case.anomaly_score }}</p>
+  </div>
+
+  <div class="mb-4">
+    <h3 class="font-semibold mb-2">Products:</h3>
+    <ul>
+      {% for product in case.products %}
+      <li>
+        <p><strong>Product ID:</strong> {{ product.product_id }}</p>
+        <p><strong>Category:</strong> {{ product.category }}</p>
+        <p><strong>Amount:</strong> ₹{{ "%.2f"|format(product.amount) }}</p>
+        <p><strong>Quantity:</strong> {{ product.quantity }}</p>
+        <hr class="my-2" />
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="mb-4">
+    <h3 class="font-semibold mb-2">Admin Actions:</h3>
+    <div class="flex space-x-4">
+      <a
+        href="{{ url_for('main_bp.feedback_case_action', case_id=case.id, action='approve') }}"
+        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+      >
+        Approve
+      </a>
+      <a
+        href="{{ url_for('main_bp.feedback_case_action', case_id=case.id, action='reject') }}"
+        class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+      >
+        Reject
+      </a>
+    </div>
+  </div>
+
+  <a
+    href="{{ url_for('main_bp.admin_dashboard') }}"
+    class="text-blue-600 hover:underline"
+    >Back to Dashboard</a
+  >
+</div>
+{% endblock %}

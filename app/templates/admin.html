@@ -1,0 +1,229 @@
+{% extends "base.html" %} {% block title %}Admin Panel - ShopNow{% endblock %}
+{% block content %}
+<div class="px-4 py-6" x-data="{ tab: 'panel' }">
+  <h2 class="text-2xl font-semibold mb-6">Admin Dashboard</h2>
+
+  <!-- Top Navigation Tabs -->
+  <div class="mb-8 flex gap-4">
+    <button
+      class="px-6 py-2 rounded-md font-semibold transition focus:outline-none"
+      :class="tab === 'panel' ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-800'"
+      @click="tab = 'panel'"
+    >
+      Admin Panel
+    </button>
+    <button
+      class="px-6 py-2 rounded-md font-semibold transition focus:outline-none"
+      :class="tab === 'feedback' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800'"
+      @click="tab = 'feedback'"
+    >
+      Review Feedback Cases
+    </button>
+    <button
+      class="px-6 py-2 rounded-md font-semibold transition focus:outline-none"
+      :class="tab === 'returns' ? 'bg-yellow-600 text-white' : 'bg-yellow-100 text-yellow-800'"
+      @click="tab = 'returns'"
+    >
+      Return Requests
+    </button>
+  </div>
+
+  <!-- Admin Panel Section -->
+  <div x-show="tab === 'panel'">
+    <!-- Add New Product Form -->
+    <div class="bg-white shadow-md rounded-md p-6 mb-8">
+      <h3 class="text-xl font-semibold mb-4">Add New Product</h3>
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            {{ form.name.label(class="block text-gray-700 font-medium mb-1") }}
+            {{ form.name(class="w-full border border-gray-300 rounded-md px-3
+            py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400",
+            placeholder="e.g. Essentials Hoodie") }} {% for error in
+            form.name.errors %}
+            <p class="text-red-600 text-sm mt-1">{{ error }}</p>
+            {% endfor %}
+          </div>
+          <div>
+            {{ form.price.label(class="block text-gray-700 font-medium mb-1") }}
+            {{ form.price(class="w-full border border-gray-300 rounded-md px-3
+            py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400",
+            placeholder="e.g. 49.99") }} {% for error in form.price.errors %}
+            <p class="text-red-600 text-sm mt-1">{{ error }}</p>
+            {% endfor %}
+          </div>
+          <div class="md:col-span-2">
+            {{ form.description.label(class="block text-gray-700 font-medium
+            mb-1") }} {{ form.description(class="w-full border border-gray-300
+            rounded-md px-3 py-2 focus:outline-none focus:ring-2
+            focus:ring-yellow-400", rows=3) }} {% for error in
+            form.description.errors %}
+            <p class="text-red-600 text-sm mt-1">{{ error }}</p>
+            {% endfor %}
+          </div>
+          <div>
+            {{ form.image_url.label(class="block text-gray-700 font-medium
+            mb-1") }} {{ form.image_url(class="w-full border border-gray-300
+            rounded-md px-3 py-2 focus:outline-none focus:ring-2
+            focus:ring-yellow-400") }} {% for error in form.image_url.errors %}
+            <p class="text-red-600 text-sm mt-1">{{ error }}</p>
+            {% endfor %}
+          </div>
+          <div>
+            {{ form.category.label(class="block text-gray-700 font-medium mb-1")
+            }} {{ form.category(class="w-full border border-gray-300 rounded-md
+            px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400") }}
+            {% for error in form.category.errors %}
+            <p class="text-red-600 text-sm mt-1">{{ error }}</p>
+            {% endfor %}
+          </div>
+          <div>
+            {{ form.stock.label(class="block text-gray-700 font-medium mb-1") }}
+            {{ form.stock(class="w-full border border-gray-300 rounded-md px-3
+            py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400") }} {%
+            for error in form.stock.errors %}
+            <p class="text-red-600 text-sm mt-1">{{ error }}</p>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="mt-6 text-right">
+          {{ form.submit(class="bg-yellow-500 hover:bg-yellow-600 text-white
+          font-semibold px-6 py-2 rounded-md transition") }}
+        </div>
+      </form>
+    </div>
+
+    <!-- Product List Table -->
+    <h3 class="text-xl font-semibold mb-4">Existing Products</h3>
+    {% if products %}
+    <div class="overflow-x-auto bg-white shadow-md rounded-md">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Name
+            </th>
+            <th
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Price
+            </th>
+            <th
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Category
+            </th>
+            <th
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-36"
+            >
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          {% for product in products %}
+          <tr>
+            <td class="px-6 py-4 whitespace-nowrap text-gray-900">
+              {{ product.name }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-gray-900">
+              ₹{{ "%.2f"|format(product.price) }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-gray-900">
+              {{ product.category or '—' }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex space-x-2">
+                <a
+                  href="{{ url_for('main_bp.edit_product', product_id=product.id) }}"
+                  class="px-3 py-1 text-sm font-medium text-gray-700 border border-gray-300 rounded hover:bg-gray-100 transition"
+                  aria-label="Edit product"
+                  >Edit</a
+                >
+                <form
+                  action="{{ url_for('main_bp.delete_product', product_id=product.id) }}"
+                  method="POST"
+                  onsubmit="return confirm('Are you sure you want to delete this product?');"
+                  class="inline"
+                >
+                  {{ form.hidden_tag() }}
+                  <button
+                    type="submit"
+                    class="px-3 py-1 text-sm font-medium text-red-600 border border-red-600 rounded hover:bg-red-600 hover:text-white transition"
+                    aria-label="Delete product"
+                  >
+                    Delete
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div
+      class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mt-4"
+      role="alert"
+    >
+      No products found. Start by adding a new one above.
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Feedback Cases Section -->
+  <div x-show="tab === 'feedback'">
+    {% include 'admin_feedback_cases.html' %}
+  </div>
+
+  <!-- Return Requests Section -->
+  <div x-show="tab === 'returns'">
+    <div class="bg-white shadow-md rounded-md p-6 mb-8">
+      <h3 class="text-xl font-semibold mb-4">Return Requests</h3>
+      {% if return_requests %}
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+          <thead class="bg-gray-100 text-gray-700 font-semibold">
+            <tr>
+              <th class="px-4 py-3 text-left">Order ID</th>
+              <th class="px-4 py-3 text-left">User ID</th>
+              <th class="px-4 py-3 text-left">Reason</th>
+              <th class="px-4 py-3 text-left">Status</th>
+              <th class="px-4 py-3 text-left">Requested At</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {% for req in return_requests %}
+            <tr>
+              <td class="px-4 py-3">{{ req.order_id }}</td>
+              <td class="px-4 py-3">{{ req.user_id }}</td>
+              <td class="px-4 py-3">{{ req.return_reason or 'N/A' }}</td>
+              <td class="px-4 py-3">{{ req.status }}</td>
+              <td class="px-4 py-3">
+                {{ req.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div
+        class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mt-4"
+        role="alert"
+      >
+        No return requests found.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<script
+  src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+  defer
+></script>
+{% endblock %}

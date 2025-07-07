@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{% block title %}ShopNow{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Favicon -->
+    <link
+      rel="icon"
+      href="{{ url_for('static', filename='images/favicon.ico') }}"
+    />
+
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <!-- Heroicons CDN -->
+    <script src="https://unpkg.com/feather-icons"></script>
+
+    <style>
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        font-family: "Poppins", sans-serif;
+      }
+    </style>
+  </head>
+
+  <body class="min-h-screen flex flex-col bg-gray-100 text-gray-800">
+    <!-- Navbar -->
+    <nav class="bg-gray-900 text-white shadow sticky top-0 z-50">
+      <div
+        class="container mx-auto px-4 py-4 flex items-center justify-between"
+      >
+        <a
+          href="{{ url_for('main_bp.index') }}"
+          class="text-2xl font-bold tracking-tight hover:text-yellow-400 transition"
+          >ShopNow</a
+        >
+        <button id="menu-toggle" class="md:hidden focus:outline-none">
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M4 6h16M4 12h16M4 18h16"
+            ></path>
+          </svg>
+        </button>
+        
+        <ul id="menu" class="hidden md:flex space-x-6 items-center">
+          <li>
+            <div
+          class="container mx-auto flex flex-col md:flex-row items-center gap-4"
+        >
+          <input
+            type="text"
+            name="search"
+            placeholder="Search products..."
+            class="w-full md:w-1/2 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400"
+          />
+          <button
+            class="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 transition"
+          >
+            <i data-feather="search" class="w-4 h-4 inline mr-1"></i> Search
+          </button>
+        </div>
+            </li
+          {% if current_user.is_authenticated %} {% if current_user.is_admin %}
+          <li>
+            <a
+              href="{{ url_for('main_bp.admin') }}"
+              class="hover:text-yellow-400 transition"
+              >Admin Panel</a
+            >
+          </li>
+          <li>
+            <a
+              href="{{ url_for('main_bp.admin_feedback_cases') }}"
+              class="hover:text-yellow-400 transition"
+              >Review Feedback Cases</a
+            >
+          </li>
+          <li>
+            <a
+              href="{{ url_for('main_bp.logout') }}"
+              class="hover:text-yellow-400 transition"
+              >Logout</a
+            >
+          </li>
+          {% else %}
+          <li>
+            <a
+              href="{{ url_for('main_bp.orders') }}"
+              class="hover:text-yellow-400 transition"
+              >My Orders</a
+            >
+          </li>
+          <li>
+            <a
+              href="{{ url_for('main_bp.wishlist') }}"
+              class="hover:text-yellow-400 transition"
+              >Wishlist</a
+            >
+          </li>
+          <li class="relative">
+            <a
+              href="{{ url_for('main_bp.cart') }}"
+              class="hover:text-yellow-400 transition flex items-center"
+            >
+              <i data-feather="shopping-cart" class="w-5 h-5 mr-1"></i>
+              Cart {% if g.cart_count > 0 %}
+              <span
+                class="absolute -top-2 -right-3 bg-red-600 text-white text-xs rounded-full px-2 py-0.5"
+                >{{ g.cart_count }}</span
+              >
+              {% endif %}
+            </a>
+          </li>
+          <li>
+            <a
+              href="{{ url_for('main_bp.logout') }}"
+              class="hover:text-yellow-400 transition"
+              >Logout</a
+            >
+          </li>
+          {% endif %}
+          {% else %}
+          <li>
+            <a
+              href="{{ url_for('main_bp.login') }}"
+              class="hover:text-yellow-400 transition"
+              >Login</a
+            >
+          </li>
+          <li>
+            <a
+              href="{{ url_for('main_bp.register') }}"
+              class="hover:text-yellow-400 transition"
+              >Register</a
+            >
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+
+    </nav>
+
+    <!-- Flash Messages -->
+    <main class="flex-grow">
+      <div class="container mx-auto px-4 py-8">
+        {% with messages = get_flashed_messages() %} {% if messages %}
+        <div
+          id="flash"
+          class="bg-blue-100 border border-blue-300 text-blue-700 px-4 py-3 rounded relative mb-6"
+          role="alert"
+        >
+          <strong class="font-semibold">{{ messages[0] }}</strong>
+          <button
+            onclick="this.parentElement.remove()"
+            class="absolute top-2 right-3 text-blue-500 hover:text-blue-700"
+          >
+            &times;
+          </button>
+        </div>
+        <script>
+          window.onload = () => {
+            const flash = document.getElementById("flash");
+            if (flash) {
+              flash.scrollIntoView({ behavior: "smooth" });
+            }
+          };
+        </script>
+        {% endif %} {% endwith %} {% block content %}{% endblock %}
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-300 py-6 mt-auto text-center text-sm">
+      &copy; {{ current_year or 2024 }} ShopNow. All rights reserved.
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+      document.getElementById("menu-toggle").addEventListener("click", () => {
+        const menu = document.getElementById("menu");
+        menu.classList.toggle("hidden");
+      });
+
+      feather.replace(); // Load Heroicons
+    </script>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>
