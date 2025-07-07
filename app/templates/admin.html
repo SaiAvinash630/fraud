@@ -199,9 +199,9 @@
 
       {% set pending = return_requests | selectattr('status', 'equalto',
       'Pending') | list %} {% set approved = return_requests |
-      selectattr('status', 'equalto', 'Approved') | list %} {% set rejected =
-      return_requests | selectattr('status', 'equalto', 'Rejected') | list %} {%
-      set all = return_requests %}
+      selectattr('status', 'in', ['Approved', 'Return Requested']) | list %} {%
+      set rejected = return_requests | selectattr('status', 'equalto',
+      'Rejected') | list %} {% set all = return_requests %}
 
       <!-- Summary Cards -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
@@ -265,9 +265,10 @@
               <td class="px-6 py-4">{{ req.probability or 'N/A' }}</td>
               <td class="px-6 py-4">
                 <span
-                  class="text-xs font-semibold px-2 py-1 rounded {% if req.status == 'Pending' %}bg-yellow-200 text-yellow-900 {% elif req.status == 'Approved' %}bg-green-200 text-green-900 {% elif req.status == 'Rejected' %}bg-red-200 text-red-900 {% else %}bg-gray-200 text-gray-800{% endif %}"
+                  class="text-xs font-semibold px-2 py-1 rounded {% if req.status == 'Pending' %}bg-yellow-200 text-yellow-900 {% elif req.status == 'Approved' or req.status == 'Return Requested' %}bg-green-200 text-green-900 {% elif req.status == 'Rejected' %}bg-red-200 text-red-900 {% else %}bg-gray-200 text-gray-800{% endif %}"
                 >
-                  {{ req.status }}
+                  {{ "Approved" if req.status == "Return Requested" else
+                  req.status }}
                 </span>
               </td>
               <td class="px-6 py-4">

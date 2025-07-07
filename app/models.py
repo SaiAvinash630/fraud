@@ -168,7 +168,7 @@ class ReturnRequest(db.Model):
     payment_method = db.Column(db.String(64))
     device_type = db.Column(db.String(64))
     delivery_status = db.Column(db.String(64))
-    probability = db.Column(db.Float, default=0.25)
+    probability = db.Column(db.Float)
     return_requested = db.Column(db.Integer)
     return_reason = db.Column(db.String(255))
     item_returned = db.Column(db.Integer)

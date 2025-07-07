@@ -677,7 +677,7 @@ def admin():
         db.session.commit()
         flash("Product added successfully!", "success")
         return redirect(url_for("main_bp.admin"))
-
+    # return render_template("admin.html", form=form)
     products = Product.query.all()
     cases = FeedbackCase.query.order_by(FeedbackCase.timestamp.desc()).all()
     return_requests = ReturnRequest.query.order_by(
@@ -1011,22 +1011,6 @@ def feedback_case_action(case_id, action):
     return redirect(url_for("main_bp.admin_feedback_cases"))
 
 
-@main_bp.route("/admin/return_request/<int:req_id>/<action>")
-@login_required
-def admin_return_request_action(req_id, action):
-    if not current_user.is_admin:
-        flash("Access denied.")
-        return redirect(url_for("main_bp.index"))
-    req = ReturnRequest.query.get_or_404(req_id)
-    if action == "approve":
-        req.status = "Approved"
-    elif action == "reject":
-        req.status = "Rejected"
-    db.session.commit()
-    flash(f"Return request {action}d.", "success")
-    return redirect(url_for("main_bp.admin"))
-
-
 # Load model and encoders once at startup
 model = xgb.XGBClassifier()
 model.load_model("models/structured_postpay_xgb_model.json")
@@ -1034,71 +1018,71 @@ with open("models/label_encoders.pkl", "rb") as f:
     label_encoders = pickle.load(f)
 
 
-@main_bp.route("/order/<int:order_id>/return", methods=["GET", "POST"])
-@login_required
-def return_request(order_id):
-    order = Order.query.get_or_404(order_id)
-    if order.user_id != current_user.id:
-        flash("Unauthorized.", "danger")
-        return redirect(url_for("main_bp.orders"))
+# @main_bp.route("/order/<int:order_id>/return", methods=["GET", "POST"])
+# @login_required
+# def return_request(order_id):
+#     order = Order.query.get_or_404(order_id)
+#     if order.user_id != current_user.id:
+#         flash("Unauthorized.", "danger")
+#         return redirect(url_for("main_bp.orders"))
 
-    if request.method == "POST":
-        # Gather features for the model
-        product_id = request.form.get("product_id")
-        quantity = request.form.get("quantity")
-        request_type = request.form.get("request_type")
-        # ...gather other features as needed...
+#     if request.method == "POST":
+#         # Gather features for the model
+#         product_id = request.form.get("product_id")
+#         quantity = request.form.get("quantity")
+#         request_type = request.form.get("request_type")
+#         # ...gather other features as needed...
 
-        # Example: Prepare your feature vector (replace with your actual features)
-        features = [
-            # e.g. order.total_amount, int(quantity), etc.
-        ]
-        # If you need to encode categorical features, use label_encoders here
+#         # Example: Prepare your feature vector (replace with your actual features)
+#         features = [
+#             # e.g. order.total_amount, int(quantity), etc.
+#         ]
+#         # If you need to encode categorical features, use label_encoders here
 
-        # Predict probability
-        prob = float(model.predict_proba([features])[0][1])  # [0][1] for positive class
+#         # Predict probability
+#         prob = float(model.predict_proba([features])[0][1])  # [0][1] for positive class
 
-        prob = float(prob)
-        if prob > 1:  # If it's a percent, convert to decimal
-            prob = prob / 100
-        if prob < 0.5:
-            status = "Approved"
-        else:
-            status = "Pending"
+#         prob = float(prob)
+#         if prob > 1:  # If it's a percent, convert to decimal
+#             prob = prob / 100
+#         if prob < 0.5:
+#             status = "Approved"
+#         else:
+#             status = "Pending"
 
-        # Gather product info for this order
-        order_items = OrderItem.query.filter_by(order_id=order.id).all()
-        product_list = [
-            {
-                "product_id": item.product_id,
-                "category": getattr(item, "category", None),
-                "amount": getattr(item, "item_amount", None),
-                "quantity": item.quantity,
-            }
-            for item in order_items
-        ]
+#         # Gather product info for this order
+#         order_items = OrderItem.query.filter_by(order_id=order.id).all()
+#         product_list = [
+#             {
+#                 "product_id": item.product_id,
+#                 "category": getattr(item, "category", None),
+#                 "amount": getattr(item, "item_amount", None),
+#                 "quantity": item.quantity,
+#             }
+#             for item in order_items
+#         ]
 
-        # Save the return request
-        new_request = ReturnRequest(
-            order_id=order.id,
-            user_id=current_user.id,
-            product_id=product_id,
-            quantity=quantity,
-            request_type=request_type,
-            status=status,
-            probability=prob,
-            products=product_list
-        )
-        db.session.add(new_request)
-        db.session.commit()
+#         # Save the return request
+#         new_request = ReturnRequest(
+#             order_id=order.id,
+#             user_id=current_user.id,
+#             product_id=product_id,
+#             quantity=quantity,
+#             request_type=request_type,
+#             status=status,
+#             probability=prob,
+#             products=product_list
+#         )
+#         db.session.add(new_request)
+#         db.session.commit()
 
-        if status == "Approved":
-            flash("Your request was automatically approved.", "success")
-        else:
-            flash("Your request is pending admin review.", "info")
-        return redirect(url_for("main_bp.orders"))
+#         if status == "Approved":
+#             flash("Your request was automatically approved.", "success")
+#         else:
+#             flash("Your request is pending admin review.", "info")
+#         return redirect(url_for("main_bp.orders"))
 
-    return render_template("order_detail.html", order=order)
+#     return render_template("order_detail.html", order=order)
 
 
 @main_bp.route("/order/<int:order_id>", methods=["GET", "POST"])
@@ -1130,8 +1114,8 @@ def order_detail(order_id):
         product_list = [
             {
                 "product_id": item.product_id,
-                "category": item.category,
-                "amount": item.item_amount,
+                "category": getattr(item, "category", None),
+                "amount": float(getattr(item, "item_amount", 0.0)),
                 "quantity": item.quantity,
             }
             for item in order_items
@@ -1196,8 +1180,8 @@ def order_detail(order_id):
                 df_input[feat] = 0
         df_input = df_input[feature_order]
 
-        pred_proba = model.predict_proba(df_input)[0][1]
-        pred_class = model.predict(df_input)[0]
+        pred_proba = float(model.predict_proba(df_input)[0][1])
+        pred_class = int(model.predict(df_input)[0])
 
         # If flagged, save feedback case
         if pred_class == 1 or pred_proba >= 0.6:
@@ -1251,11 +1235,15 @@ def order_detail(order_id):
                 chargeback_rate=chargeback_rate,
                 transaction_amount=order.total_amount,
                 status="Return Requested",
+                probability=round(pred_proba, 4),
             )
         db.session.add(return_req)
         db.session.commit()
         # === FRAUD DETECTION LOGIC END ===
-
+        if pred_class == 1 or pred_proba >= 0.6:
+            flash(f"Your request has been submitted but flagged. Fraud Probability: {pred_proba:.4f}", "info")
+        else:
+            flash(f"Your return request was auto-approved. Fraud Probability: {pred_proba:.4f}", "success")
         return redirect(url_for("main_bp.orders"))
 
     return render_template("order_detail.html", order=order)
