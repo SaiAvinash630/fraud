@@ -1185,25 +1185,43 @@ def order_detail(order_id):
 
         # If flagged, save feedback case
         if pred_class == 1 or pred_proba >= 0.6:
-            feedback = FeedbackCase(
-                order_id=order.id,
-                user_id=current_user.id,
-                payment_method=input_data["payment_method"],
-                device=input_data["device_type"],
-                products=product_list,
-                total_value=input_data["transaction_amount"],
-                num_trans_24h=0,
-                num_failed_24h=0,
-                no_of_cards_from_ip=0,
-                account_age_days=input_data["account_age_days"],
-                timestamp=datetime.now(),
-                prediction="Need Review",
-                probability=round(pred_proba, 4),
-                anomaly_score=-0.03,
-                admin_status="Pending",
-            )
-            db.session.add(feedback)
+            # Check if feedback already exists
+            existing_feedback = FeedbackCase.query.filter_by(order_id=order.id, user_id=current_user.id).first()
+
+            if existing_feedback:
+                # Update existing feedback
+                existing_feedback.payment_method = input_data["payment_method"]
+                existing_feedback.device = input_data["device_type"]
+                existing_feedback.products = product_list
+                existing_feedback.total_value = input_data["transaction_amount"]
+                existing_feedback.account_age_days = input_data["account_age_days"]
+                existing_feedback.timestamp = datetime.now()
+                existing_feedback.prediction = "Need Review"
+                existing_feedback.probability = round(pred_proba, 4)
+                existing_feedback.admin_status = "Pending"
+                # (Update other fields if needed)
+            else:
+                # Create a new feedback case
+                feedback = FeedbackCase(
+                    order_id=order.id,
+                    user_id=current_user.id,
+                    payment_method=input_data["payment_method"],
+                    device=input_data["device_type"],
+                    products=product_list,
+                    total_value=input_data["transaction_amount"],
+                    num_trans_24h=0,
+                    num_failed_24h=0,
+                    no_of_cards_from_ip=0,
+                    account_age_days=input_data["account_age_days"],
+                    timestamp=datetime.now(),
+                    prediction="Need Review",
+                    probability=round(pred_proba, 4),
+                    admin_status="Pending",
+                )
+                db.session.add(feedback)
+
             db.session.commit()
+
             flash(
                 f"Your request has been submitted but flagged as low risk. Fraud Probability: {pred_proba:.4f}",
                 "info",
@@ -1214,6 +1232,19 @@ def order_detail(order_id):
                 f"Your request has been submitted. Fraud Probability: {pred_proba:.4f}",
                 "success",
             )
+# Check if return request already exists
+        existing_return = ReturnRequest.query.filter_by(order_id=order.id, user_id=current_user.id).first()
+
+        if existing_return:
+            # Update only necessary fields (if you want)
+            existing_return.return_requested = 1 if request_type == "return" else 0
+            existing_return.return_reason = request_type if request_type == "return" else "None"
+            existing_return.item_returned = 1 if request_type == "return" else 0
+            existing_return.status = "Return Requested"
+            existing_return.probability = round(pred_proba, 4)
+            # Add more updates if needed
+        else:
+            # Only add a new one if it doesn't exist
             return_req = ReturnRequest(
                 order_id=order.id,
                 user_id=current_user.id,
@@ -1237,8 +1268,10 @@ def order_detail(order_id):
                 status="Return Requested",
                 probability=round(pred_proba, 4),
             )
-        db.session.add(return_req)
+            db.session.add(return_req)
+
         db.session.commit()
+
         # === FRAUD DETECTION LOGIC END ===
         if pred_class == 1 or pred_proba >= 0.6:
             flash(f"Your request has been submitted but flagged. Fraud Probability: {pred_proba:.4f}", "info")
